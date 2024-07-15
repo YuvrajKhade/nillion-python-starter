@@ -1,9 +1,9 @@
 """
 In this example, we:
 1. connect to the local nillion-devnet
-2. store the secret addition program
-3. store a secret to be used in the computation
-4. compute the secret addition program with the stored secret and another computation time secret
+2. store the advanced computation program
+3. store secrets to be used in the computation
+4. compute the advanced computation program with the stored secrets and additional computation time secrets
 """
 
 import asyncio
@@ -41,7 +41,7 @@ async def main():
 
     # 3. Pay for and store the program
     # Set the program name and path to the compiled program
-    program_name = "secret_addition_complete"
+    program_name = "advanced_computation"
     program_mir_path = f"../nada_quickstart_programs/target/{program_name}.nada.bin"
 
     # Create payments config, client and wallet
@@ -71,44 +71,48 @@ async def main():
     print("Stored program. action_id:", action_id)
     print("Stored program_id:", program_id)
 
-    # 4. Create the 1st secret, add permissions, pay for and store it in the network
-    # Create a secret named "my_int1" with any value, ex: 500
-    new_secret = nillion.NadaValues(
+    # 4. Create the secrets, add permissions, pay for and store them in the network
+    # Create secrets with any values
+    secrets = nillion.NadaValues(
         {
             "my_int1": nillion.SecretInteger(500),
+            "my_int2": nillion.SecretInteger(200),
+            "my_int3": nillion.SecretInteger(300),
+            "my_int4": nillion.SecretInteger(400)
         }
     )
 
-    # Set the input party for the secret
-    # The party name needs to match the party name that is storing "my_int1" in the program
-    party_name = "Party1"
+    # Set the input party for the secrets
+    # The party names need to match the party names that are storing the secrets in the program
+    party_names = ["Party1", "Party2", "Party3", "Party4"]
 
     # Set permissions for the client to compute on the program
     permissions = nillion.Permissions.default_for_user(client.user_id)
     permissions.add_compute_permissions({client.user_id: {program_id}})
 
-    # Pay for and store the secret in the network and print the returned store_id
+    # Pay for and store the secrets in the network and print the returned store_id
     receipt_store = await get_quote_and_pay(
         client,
-        nillion.Operation.store_values(new_secret, ttl_days=5),
+        nillion.Operation.store_values(secrets, ttl_days=5),
         payments_wallet,
         payments_client,
         cluster_id,
     )
-    # Store a secret
+    # Store the secrets
     store_id = await client.store_values(
-        cluster_id, new_secret, permissions, receipt_store
+        cluster_id, secrets, permissions, receipt_store
     )
     print(f"Computing using program {program_id}")
-    print(f"Use secret store_id: {store_id}")
+    print(f"Use secrets store_id: {store_id}")
 
-    # 5. Create compute bindings to set input and output parties, add a computation time secret and pay for & run the computation
+    # 5. Create compute bindings to set input and output parties, add computation time secrets, and pay for & run the computation
     compute_bindings = nillion.ProgramBindings(program_id)
-    compute_bindings.add_input_party(party_name, party_id)
-    compute_bindings.add_output_party(party_name, party_id)
+    for party_name in party_names:
+        compute_bindings.add_input_party(party_name, party_id)
+        compute_bindings.add_output_party(party_name, party_id)
 
-    # Add my_int2, the 2nd secret at computation time
-    computation_time_secrets = nillion.NadaValues({"my_int2": nillion.SecretInteger(10)})
+    # Add my_int5, the 5th secret at computation time
+    computation_time_secrets = nillion.NadaValues({"my_int5": nillion.SecretInteger(50)})
 
     # Pay for the compute
     receipt_compute = await get_quote_and_pay(
@@ -128,7 +132,7 @@ async def main():
         receipt_compute,
     )
 
-    # 8. Return the computation result
+    # 6. Return the computation result
     print(f"The computation was sent to the network. compute_id: {compute_id}")
     while True:
         compute_event = await client.next_compute_event()
